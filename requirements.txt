@@ -1,0 +1,7 @@
+aiosqlite==0.20.0
+deep_translator==1.11.4
+Flask==3.0.3
+ShazamAPI==0.0.2
+ShazamAPI==0.0.2
+spotipy==2.23.0
+termcolor==2.4.0
