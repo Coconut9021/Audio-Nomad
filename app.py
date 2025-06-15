@@ -12,7 +12,7 @@ import aiosqlite
 import sqlite3
 import re
 import json
-
+from tkinter import filedialog
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -28,9 +28,19 @@ TOKEN_INFO = 'token_info'
 
 #Resets logs file to allow user to look through current run information
 open("log.txt", "w").close()
-            
+
+def openpath():
+    print("making path request")
+    filepath = filedialog.askdirectory()
+    return filepath
+
 @app.route('/')
+def home():
+    return render_template('home.html')
+
+@app.route('/login')
 def login():
+    print("started login functuion")
     # create a SpotifyOAuth instance and get the authorization URL
     auth_url = create_spotify_oauth().get_authorize_url()
     # redirect the user to the authorization URL
@@ -38,6 +48,7 @@ def login():
 
 @app.route('/redirect')
 def redirect_page():
+    print("redirect function just started")
     # clear the session
     session.clear()
     # get the authorization code from the request parameters
@@ -47,10 +58,11 @@ def redirect_page():
     # save the token info in the session
     session[TOKEN_INFO] = token_info
     # redirect the user to the save_local_library route
-    return redirect(url_for('shazam_search', _external=True))
+    return redirect(url_for('shazam_search', _external=True)), render_template('database_found.html')
 
 @app.route('/shazam_search')
 async def shazam_search():
+    print("shazam_search function is going")
     dont_run_shazam = False
 
     # Database of all tracks found in the shazam database and song data
@@ -93,7 +105,7 @@ async def shazam_search():
             for file in files:
                 #list of supported audio formats
                 audio_extensions = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma', '.m4a']
-                _, file_extension = os.path.splitext(f'tracks/{file}')
+                _, file_extension = os.path.splitext(f'{openpath()}/{file}')
 
                 #check to see if the file is an audio file that can be processed by ShazamAPI and runs the recognize function
                 if file_extension.lower() in audio_extensions:
@@ -112,7 +124,6 @@ async def shazam_search():
                         artist_name = song_data[1]['track']['subtitle']
                         process_track_data(song_title, artist_name)
                         run_count += 1
-
 
                         # Initialize database connection and cursor within the route function
                         conn = sqlite3.connect("songs.db")
@@ -200,9 +211,10 @@ def process_track_data(song_title, artist_name):
 
 @app.route('/saveLocalLibrary')
 async def save_local_library():
+    print("saving loval library to spotify now")
     song_uris = []
     request_count = 0
-    playlist_name = "My Shazam Tracks"
+    playlist_name = "audio nomad"
     try: 
         # get the token info from the session
         token_info = get_token()
@@ -226,7 +238,7 @@ async def save_local_library():
         if(playlist['name']) == playlist_name:
             named_playlist_id = playlist['id']
     if not named_playlist_id:
-        return "Please create the server you would like to use first"
+        return "Please create the playlist you would like to use first"
     
     # checks how many songs have been added to the database 
     async with aiosqlite.connect('songs.db') as conn:
