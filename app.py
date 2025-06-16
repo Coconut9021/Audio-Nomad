@@ -14,6 +14,7 @@ import re
 import json
 from tkinter import filedialog
 from shazam_handler import song_regonize
+from spotify_handler import create_spotify_oauth, TOKEN_INFO , get_token
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -23,9 +24,6 @@ app.config['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
 
 # set a random secret key to sign the cookie
 app.secret_key = 'ebbfZ%HJ!xYq4PP%d52VKpvnrWBrMD'
-
-# set the key for the token info in the session dictionary
-TOKEN_INFO = 'token_info'
 
 #Resets logs file to allow user to look through current run information
 open("log.txt", "w").close()
@@ -47,7 +45,7 @@ def login():
     auth_url = create_spotify_oauth().get_authorize_url()
     # redirect the user to the authorization URL
     return redirect(auth_url)
-
+    
 @app.route('/redirect')
 def redirect_page():
     print("redirect function just started")
@@ -155,63 +153,6 @@ async def save_local_library():
     sp.user_playlist_add_tracks(user_id, named_playlist_id, song_uris, position=None)         
     return render_template('successful.html', track_info=track_info)
 
-# function to get the token info from the session
-def get_token():
-    token_info = session.get(TOKEN_INFO, None)
-    if not token_info:
-        # if the token info is not found, redirect the user to the login route
-        redirect(url_for('login', _external=False))
-    
-    # check if the token is expired and refresh it if necessary
-    now = int(time.time())
-
-    is_expired = token_info['expires_at'] - now < 60
-    if(is_expired):
-        spotify_oauth = create_spotify_oauth()
-        token_info = spotify_oauth.refresh_access_token(token_info['refresh_token'])
-
-    return token_info
-
-#function to get authenticaion complete
-def create_spotify_oauth():    
-    client_id, client_secret = load_credentials()
-
-    if not client_id or not client_secret:
-        print(colored("No credentials found. Please input credentials.", color='green'))
-        client_id = input("Enter your Spotify Client ID: ")
-        client_secret = input("Enter your Spotify Client Secret: ")
-        save_credentials(client_id, client_secret)
-
-    else:
-        print(colored("Using saved credentials.", color='green'))
-
-    return SpotifyOAuth(
-        client_id = client_id,
-        client_secret = client_secret,
-        redirect_uri = url_for('redirect_page', _external=True),
-        scope='user-library-read playlist-modify-public playlist-modify-private'
-    )
-
-#saves credentials for the spotify developer account to JSON file for future use
-def save_credentials(client_id, client_secret):
-    data = {
-        "client_id": client_id,
-        "client_secret": client_secret
-    }
-    with open("spotify_credentials.json", "w") as file:
-        json.dump(data, file)
-    print(colored("Credentials saved successfully.", color='green'))
-    
-def load_credentials():
-    try:
-        with open("spotify_credentials.json", "r") as file:
-            data = json.load(file)
-        return data["client_id"], data["client_secret"]
-    except FileNotFoundError:
-        return None, None
-    except json.JSONDecodeError:
-        print(colored("Error loading credentials. Please check your JSON file.", color='red'))
-        return None, None
 
 # Open the URL in the default browser
 webbrowser.open('http://127.0.0.1:5000')
